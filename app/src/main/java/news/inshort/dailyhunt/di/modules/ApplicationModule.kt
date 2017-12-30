@@ -7,6 +7,8 @@ import dagger.Provides
 import news.inshort.dailyhunt.application.MyApplication
 import news.inshort.dailyhunt.network.RetrofitApi
 import news.inshort.dailyhunt.utility.Constants
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
 import retrofit2.converter.gson.GsonConverterFactory
@@ -17,15 +19,15 @@ import javax.inject.Singleton
  */
 
 @Module
-class ApplicationModule(val mContext : MyApplication) {
+class ApplicationModule(val mContext: MyApplication) {
 
     @Provides
     @Singleton
-    fun provideGsonConverterFactory(): GsonConverterFactory = GsonConverterFactory.create(getGsonInstance())
+    fun provideGsonConverterFactory(gson: Gson ): GsonConverterFactory = GsonConverterFactory.create(gson)
 
     @Provides
     @Singleton
-    fun getGsonInstance(): Gson = GsonBuilder().setDateFormat("yyyy-MM-dd'T'HH:mm:ssZ").create()
+    fun provideGsonInstance(): Gson = GsonBuilder().setDateFormat("yyyy-MM-dd'T'HH:mm:ssZ").create()
 
     @Provides
     @Singleton
@@ -33,12 +35,25 @@ class ApplicationModule(val mContext : MyApplication) {
 
     @Provides
     @Singleton
-    fun provideRetrofit(converterFactory: GsonConverterFactory, adapterFactory: RxJava2CallAdapterFactory): Retrofit =
-         Retrofit.Builder()
-                .baseUrl(Constants.BASE_URL)
-                .addConverterFactory(converterFactory)
-                .addCallAdapterFactory(adapterFactory)
-                .build()
+    fun provideHttpInterceptor(): HttpLoggingInterceptor = HttpLoggingInterceptor()
+
+
+    @Provides
+    @Singleton
+    fun provideLoggingInterceptor(interceptor: HttpLoggingInterceptor): OkHttpClient {
+        interceptor.level = HttpLoggingInterceptor.Level.BODY
+        return OkHttpClient.Builder().addInterceptor(interceptor).build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideRetrofit(converterFactory: GsonConverterFactory, adapterFactory: RxJava2CallAdapterFactory,okHttpClient: OkHttpClient): Retrofit =
+            Retrofit.Builder()
+                    .baseUrl(Constants.BASE_URL)
+                    .addConverterFactory(converterFactory)
+                    .addCallAdapterFactory(adapterFactory)
+                    .client(okHttpClient)
+                    .build()
 
     @Provides
     @Singleton
